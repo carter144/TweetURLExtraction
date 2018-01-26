@@ -1,2 +1,5 @@
 # Jupyter Checkpoints Folder
 .ipynb_checkpoints/
+
+# Lock file when modifying a CSV
+.~lock.*
