@@ -1,5 +1,6 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 import csv
+from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -64,6 +65,17 @@ cld.fit(X_train, y_train)
 print("Testing DecisionTreeClassifier")
 score_decisiontree = cld.score(X_test, y_test)
 
+# Training SupportVectorClassifer
+print("Training SupportVectorClassifer")
+svc = SVC(C=550, degree=3, decision_function_shape='ovo', tol=0.001)
+svc.fit(X_train, y_train)
+
+# Testing SupportVectorClassifer
+print("Testing SupportVectorClassifer")
+score_supportvector = svc.score(X_test, y_test)
+
+
+
 # Training GaussianNB Classifier
 print("Training GaussianNB Classifier")
 cnb = GaussianNB()
@@ -76,6 +88,7 @@ score_gaussiannb = cnb.score(X_test.toarray(), y_test)
 # Printing out test results
 print("Random Forest accuracy: %s" % score_forest)
 print("Decision Tree accuracy: %s" % score_decisiontree)
+print("Support Vector accuracy: %s" % score_supportvector)
 print("Gaussian Naive Bayes accuracy: %s" % score_gaussiannb)
 
 # Performing cross-validation
