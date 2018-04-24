@@ -45,11 +45,11 @@ vectorizer = TfidfVectorizer(stop_words=stop_words)
 K = vectorizer.fit_transform(corpus)
 
 # Splitting data into separate training and testing data
-X_train, X_test, y_train, y_test = train_test_split(K, bool_array, test_size = 0.2)
+X_train, X_test, y_train, y_test = train_test_split(K, bool_array, test_size = 0.2, random_state = 255)
 	
 # Training RandomForestClassifier
 print("Training RandomForestClassifier")
-clf = RandomForestClassifier(max_depth=10, random_state=0)
+clf = RandomForestClassifier(max_depth=19, n_estimators = 7, max_features = "auto", min_samples_leaf = 1, random_state = 15, n_jobs = -1)
 clf.fit(X_train, y_train)
 
 # Testing RandomForestClassifier
@@ -100,7 +100,7 @@ scores = cross_val_score(rfc, K, bool_array, cv=10)
 print("RandomForestClassifier Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 # DecisionTreeClassifier
-dtc = DecisionTreeClassifier(random_state = 0, max_depth = 50, min_samples_leaf = 5)
+dtc = DecisionTreeClassifier(random_state = 0, max_depth = 5, min_samples_leaf = 20)
 scores = cross_val_score(dtc, K, bool_array, cv=10)
 print("DecisionTreeClassifier Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
