@@ -10,6 +10,7 @@ from nltk.tokenize import sent_tokenize
 import nltk
 import csv
 import string
+import pickle
 import sys
 from bs4 import BeautifulSoup
 from string import punctuation
@@ -38,12 +39,12 @@ def scrape_link(url):
         
     except ConnectionError as e:
         print("error in connection")
-        exit()
+        return ""
     except requests.exceptions.Timeout:
         print("Time out error")
-        exit()
+        return ""
     except requests.exceptions.ContentDecodingError:
-        print("Decode error")
+        return ""
         
     return soup.html
 
@@ -90,6 +91,7 @@ def parse_html(html):
         sent = str(sent).replace("n\\", "")
         sent = str(sent).replace("\\", "")
         text = sent
+
         t, d = MosesTokenizer(), MosesDetokenizer()
         tokens = t.tokenize(text)
         detokens = d.detokenize(tokens)
@@ -98,13 +100,7 @@ def parse_html(html):
         text = url_re.sub(" ", text)
         text = url2_re.sub(" ", text)
             
-            # Removing non-alphanumeric characters
-            # text = char_re.sub("\g<1>\g<2>", text)
-            # text = right_re.sub("\g<1>", text)
-            # text = left_re.sub("\g<1>", text)  
-            # text = center_re.sub(" ", text)
-            
-            # Removing multiple spacing characters
+        # Removing multiple spacing characters
         text = space_re.sub(" ", text)
 
         text = text.encode("ascii", errors="ignore").decode()
@@ -112,9 +108,8 @@ def parse_html(html):
             # Stripping leading and trailing spaces
         text = text.strip()
         return text
-    except:
-        print("Error in parsing html")
-        exit()
+    except Exception as e:
+        return ""
 
 
 def createCorpus(csvFile):
@@ -147,35 +142,41 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('-u', '--url', help="single url")
+    parser.add_argument('-f', '--file', help="input file for list of urls")
     
 
     args = parser.parse_args()
+    vectorizer = pickle.load(open("vectorizer.pickle", "rb"))
+    clf = pickle.load(open("model.pickle", "rb"))
 
-
-    if args.url is not None:
+    if args.url is not None and args.file is None:
         url = args.url
 
-    html_content = scrape_link(url)
-    text = parse_html(html_content)
+        html_content = scrape_link(url)
+        text = parse_html(html_content)
+        idf_array = vectorizer.transform([text])
 
-    # Create corpus from sample data
-    corpus = createCorpus("../data/url_info.csv")
-    stop_words = [x.strip() for x in open('../data/stop_words.txt','r').read().split('\n')]
-    vectorizer = TfidfVectorizer(stop_words=stop_words, min_df=0.10, max_df=0.90)
-    K = vectorizer.fit_transform(corpus)
+        # Predict the input url
+        print(clf.predict_proba(idf_array))
+        print(clf.predict(idf_array))
+    if args.file is not None:
+        file_path = args.file
+        with open(file_path, "r", encoding="utf8") as f:
+            for line in f:
+                url = line.strip()
+                html_content = scrape_link(url)
+                if (html_content == ""):
+                    continue
+                text = parse_html(html_content)
+                if (text == ""):
+                    continue
+                idf_array = vectorizer.transform([text])
+                if (clf.predict(idf_array) == 1):  # 1 is a good link
+                    print(url)
 
-    # Split the data
-    X_train, X_test, y_train, y_test = train_test_split(K, bool_array, test_size = 0.2)
 
-    #Convert single url to tfidf vector
-    idf_array = vectorizer.transform([text])
-
-    # Train the data
-    clf=RandomForestClassifier(max_depth=19, n_estimators=7, max_features="auto", min_samples_leaf=1, random_state=15, n_jobs=-1)
-    clf.fit(X_train, y_train)
-
-    # Predict the input url
-    print(clf.predict(idf_array))
+    # [1, 0] bad
+    # [0, 1] good
 
 
 
