@@ -37,6 +37,35 @@ def scrape_links(links, relevant, verbose = False):
             scraped.loc[len(scraped)] = [url,False,"ContentDecodingError","",""]
             
 # Function to extract the text from the html of each article
+def preProcess(text):
+    # Create lemmatizer
+    lemmatizer = WordNetLemmatizer()
+    l = LancasterStemmer()
+    # Tokenize to sentences into a list
+    sent_tokenize_list = sent_tokenize(text)
+
+    # An array to store the words as tokens
+    tokenized_words = []
+
+    # Since sent_tokenize_list is now a list of strings, we have to iterate through each one and split on spaces to get individual words
+    for sentence in sent_tokenize_list:
+        
+        k = ' '.join(filter(None, (word.strip(punctuation) for word in sentence.split())))
+        for words in k.split():
+            
+            if "." in words:
+                words_re = re.compile("(.+)\.|\?")
+                m = words_re.search(words).group(1)
+                words = m
+            k = lemmatizer.lemmatize(words.lower())
+            j = l.stem(k)
+            tokenized_words.append(j)
+            
+    # Itreates through each word to create final stirng
+    final = ' '.join(str(x) for x in tokenized_words)
+
+    return final
+
 def convert_text(html):
     try:
         text = newspaper.fulltext(html)
@@ -44,36 +73,48 @@ def convert_text(html):
     except Exception as e:
         return ""
             
-space_re = re.compile("[\s]{2,}")
-char_re = re.compile("([A-Za-z0-9]+)[^A-Za-z0-9\s]+([A-Za-z0-9]+)")
-right_re = re.compile("([A-Za-z0-9]+)[^A-Za-z0-9\s]+")
-left_re = re.compile("[^A-Za-z0-9\s]+([A-Za-z0-9]+)")
-center_re = re.compile("\s*[^A-Za-z0-9\s]+\s*")
-url_re = re.compile("https{0,1}://[^\s]+")
-url2_re = re.compile("[a-z0-9\.]+\.[a-z0-9\.]+/[^\s]*")
+# space_re = re.compile("[\s]{2,}")
+# char_re = re.compile("([A-Za-z0-9]+)[^A-Za-z0-9\s]+([A-Za-z0-9]+)")
+# right_re = re.compile("([A-Za-z0-9]+)[^A-Za-z0-9\s]+")
+# left_re = re.compile("[^A-Za-z0-9\s]+([A-Za-z0-9]+)")
+# center_re = re.compile("\s*[^A-Za-z0-9\s]+\s*")
+# url_re = re.compile("https{0,1}://[^\s]+")
+# url2_re = re.compile("[a-z0-9\.]+\.[a-z0-9\.]+/[^\s]*")
 
 # Normalizes the given text
-def normalize_text(text):
-    # Converting text to lowercase
-    text = text.lower()
-    
-    # Removing URLs
-    text = url_re.sub(" ", text)
-    text = url2_re.sub(" ", text)
-    
-    # Removing non-alphanumeric characters
-    text = char_re.sub("\g<1>\g<2>", text)
-    text = right_re.sub("\g<1>", text)
-    text = left_re.sub("\g<1>", text)  
-    text = center_re.sub(" ", text)
-    
-    # Removing multiple spacing characters
-    text = space_re.sub(" ", text)
-    
-    # Stripping leading and trailing spaces
-    text = text.strip()
-    
-    return text
+def normalize_text(html):
+    try:
+        url_re = re.compile("https{0,1}://[^\s]+")
+        url2_re = re.compile("[a-z0-9\.]+\.[a-z0-9\.]+/[^\s]*")
+        space_re = re.compile("[\s]{2,}")
+
+        html = html.encode("ascii", errors="ignore")
+        text = newspaper.fulltext(html)
+        
+        sent = text.encode('ascii', errors='ignore')
+        sent = str(sent).replace("r\\", "")
+        sent = str(sent).replace("n\\", "")
+        sent = str(sent).replace("\\", "")
+        text = sent
+
+        t, d = MosesTokenizer(), MosesDetokenizer()
+        tokens = t.tokenize(text)
+        detokens = d.detokenize(tokens)
+        text = " ".join(detokens)
+            # Removing URLs
+        text = url_re.sub(" ", text)
+        text = url2_re.sub(" ", text)
+            
+        # Removing multiple spacing characters
+        text = space_re.sub(" ", text)
+
+        text = text.encode("ascii", errors="ignore").decode()
+        text = preProcess(text)
+            # Stripping leading and trailing spaces
+        text = text.strip()
+        return text
+    except Exception as e:
+        return ""
 
 # Creates the document corpus from the supplied CSV
 def createCorpus(extracted_df):
