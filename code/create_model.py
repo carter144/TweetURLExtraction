@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+# Importing relevant Python libraries
 from sklearn.feature_extraction.text import TfidfVectorizer
 import argparse
 from sklearn.ensemble import RandomForestClassifier
