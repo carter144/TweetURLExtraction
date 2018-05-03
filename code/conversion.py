@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+
+# Importing relevant Python libraries
 import argparse
-import pandas
 import requests
 import bs4
 from requests.exceptions import ConnectionError
@@ -7,36 +9,18 @@ import newspaper
 import re
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import sent_tokenize
-import nltk
 import csv
-import string
 import pickle
-import sys
-from bs4 import BeautifulSoup
 from string import punctuation
 from nltk.tokenize.moses import MosesTokenizer, MosesDetokenizer
 from nltk.stem.lancaster import LancasterStemmer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import cross_val_score
-
-
 
 bool_array = []
 
 def scrape_link(url):
-
     try:
         resp = requests.get(url, timeout = 500, stream=True)
-
-        soup = bs4.BeautifulSoup(resp.content, "lxml")
-        status_code = resp.status_code
-        title = ""
-        title_el = soup.find("title")
-        if title_el is not None:
-            title = soup.find("title").text
-        
+        soup = bs4.BeautifulSoup(resp.content, "lxml")        
     except ConnectionError as e:
         print("error in connection")
         return ""
@@ -44,8 +28,7 @@ def scrape_link(url):
         print("Time out error")
         return ""
     except requests.exceptions.ContentDecodingError:
-        return ""
-        
+        return ""  
     return soup.html
 
 def preProcess(text):
@@ -85,6 +68,8 @@ def parse_html(html):
 
         html = html.encode("ascii", errors="ignore")
         text = newspaper.fulltext(html)
+        if text is None:
+            text = ""
         
         sent = text.encode('ascii', errors='ignore')
         sent = str(sent).replace("r\\", "")
@@ -96,7 +81,8 @@ def parse_html(html):
         tokens = t.tokenize(text)
         detokens = d.detokenize(tokens)
         text = " ".join(detokens)
-            # Removing URLs
+        
+        # Removing URLs
         text = url_re.sub(" ", text)
         text = url2_re.sub(" ", text)
             
@@ -139,15 +125,20 @@ def createCorpus(csvFile):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('-u', '--url', help="single url")
-    parser.add_argument('-f', '--file', help="input file for list of urls")
+    parser.add_argument('-u', '--url', help="A single URL to classify as relevant or not")
+    parser.add_argument('-f', '--file', help="An input file containing a list of URLs to check the relevance of")
+    parser.add_argument('-m', '--model', help="A pickle object containing a trained model used for classification")
+    parser.add_argument('-v', '--vectorizer', help="A pickle object containing a vectorizer used to vectorize the text in each link")
     
 
     args = parser.parse_args()
-    vectorizer = pickle.load(open("vectorizer.pickle", "rb"))
-    clf = pickle.load(open("model.pickle", "rb"))
+    
+    model_file = "model.pickle" if args.model is None else args.model
+    vec_file = "vectorizer.pickle" if args.vectorizer is None else args.vectorizer   
+    
+    vectorizer = pickle.load(open(vec_file, "rb"))
+    clf = pickle.load(open(model_file, "rb"))
 
     if args.url is not None and args.file is None:
         url = args.url
@@ -171,12 +162,8 @@ if __name__ == "__main__":
                 if (text == ""):
                     continue
                 idf_array = vectorizer.transform([text])
+                
+                # [1, 0] bad
+                # [0, 1] good
                 if (clf.predict(idf_array) == 1):  # 1 is a good link
                     print(url)
-
-
-    # [1, 0] bad
-    # [0, 1] good
-
-
-
